@@ -2,7 +2,7 @@
 ;; -*- Scheme -*-
 
 (import (codeberg.org/rgherdt/scheme-lsp-server lsp-server)
-        (codeberg.org/rgherdt/scheme-lsp-server private))
+        (codeberg.org/rgherdt/scheme-lsp-server lsp-server private util))
 
 (cond-expand
  (guile (import (except (scheme base)
@@ -11,16 +11,17 @@
                         member)
                 (srfi srfi-18)
                 (srfi srfi-28)
-                (lsp-server guile)))
+                (lsp-server private guile)))
  ((or chicken gambit)
-  (import (scheme base)
-          (scheme char) ;; string-downcase
+  (import          (scheme char) ;; string-downcase
           (scheme process-context)
           (srfi 28))))
 
 (cond-expand (chicken (import (lsp-server chicken)
+                              (scheme base)
                               (srfi 18)))
-             (gambit (import (codeberg.org/rgherdt/scheme-lsp-server gambit)
+             (gambit (import (gambit)
+                             (codeberg.org/rgherdt/scheme-lsp-server lsp-server private gambit)
                              (only (srfi 1) any)))
              (guile (import (only (srfi srfi-1) any)))
              (else (import (only (srfi 1) any))))

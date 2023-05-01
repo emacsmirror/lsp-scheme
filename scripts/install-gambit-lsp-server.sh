@@ -5,6 +5,7 @@ ARGS=$@
 BASE_DIR=$(dirname $0)
 
 force_flag=0
+compile_flag=0
 
 if [ "$#" -eq 1 ]; then
     if test "$1" = "compile"; then
@@ -25,13 +26,11 @@ for dep in ${deps[@]}; do
 done
 
 if [ $compile_flag -eq 1 ]; then
-    gsc codeberg.org/rgherdt/scheme-lsp-server/gambit/util \
-        codeberg.org/rgherdt/scheme-lsp-server/private \
-        codeberg.org/rgherdt/scheme-lsp-server/trie \
-        codeberg.org/rgherdt/scheme-lsp-server/parse \
-        codeberg.org/rgherdt/scheme-lsp-server/adapter \
-        codeberg.org/rgherdt/scheme-lsp-server/document \
-        codeberg.org/rgherdt/scheme-lsp-server/gambit \
+    gsc codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/gambit \
+        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/util \
+        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/parse \
+        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/adapter \
+        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/trie \
         codeberg.org/rgherdt/scheme-lsp-server/lsp-server
 fi
 

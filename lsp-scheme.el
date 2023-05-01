@@ -87,19 +87,19 @@
 ;;;; Constants
 
 (defconst lsp-scheme--json-rpc-version
-  "0.2.11"
+  "0.3.0"
   "Version of JSON-RPC implementation used.")
 
 (defconst lsp-scheme--chicken-server-minimum-version
-  "0.1.8"
+  "0.3.0"
   "Minimum LSP Server server required for CHICKEN.")
 
 (defconst lsp-scheme--gambit-server-minimum-version
-  "0.2.0"
+  "0.3.0"
   "Minimum LSP Server server required for Gambit.")
 
 (defconst lsp-scheme--guile-server-minimum-version
-  "0.1.10"
+  "0.3.0"
   "Minimum LSP Server server required for Guile.")
 
 (defconst lsp-scheme--shell-output-name
@@ -243,7 +243,7 @@ ignored"
 (defun lsp-scheme--gambit-library-installed-p ()
   "Check if lsp-server library is installed."
   (let ((res (call-process-shell-command
-              "gsi -e '(import (codeberg.org/rgherdt/scheme-lsp-server gambit util)) (exit)'")))
+              "gsi -e '(import (codeberg.org/rgherdt/scheme-lsp-server lsp-server private gambit)) (exit)'")))
     (= res 0)))
 
 (defun lsp-scheme--gambit-executable-installed-p ()
