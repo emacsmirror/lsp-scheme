@@ -1,20 +1,20 @@
-#!/usr/bin/bash
+#!/bin/sh
 
-ARGS=$@
+set -e
 
 BASE_DIR=$(readlink -f $(dirname $0))
 CUR_DIR=`pwd`
 
-deps=("codeberg.org/rgherdt/srfi" \
-          "github.com/ashinn/irregex" \
-          "github.com/rgherdt/chibi-scheme" \
-          "codeberg.org/rgherdt/scheme-json-rpc/json-rpc" \
-          "codeberg.org/rgherdt/scheme-lsp-server/lsp-server")
-
-for dep in ${deps[@]}; do
-    gsi -uninstall $dep > /dev/null 2>&1
-    gsi -install $dep
-done
+gsi -uninstall "codeberg.org/rgherdt/srfi"
+gsi -uninstall "github.com/ashinn/irregex"
+gsi -uninstall "github.com/rgherdt/chibi-scheme"
+gsi -uninstall "codeberg.org/rgherdt/scheme-json-rpc/json-rpc"
+gsi -uninstall "codeberg.org/rgherdt/scheme-lsp-server/lsp-server"
+gsi -install "codeberg.org/rgherdt/srfi"
+gsi -install "github.com/ashinn/irregex"
+gsi -install "github.com/rgherdt/chibi-scheme"
+gsi -install "codeberg.org/rgherdt/scheme-json-rpc/json-rpc"
+gsi -install "codeberg.org/rgherdt/scheme-lsp-server/lsp-server"
 
 gsc codeberg.org/rgherdt/scheme-json-rpc/json-rpc
 
