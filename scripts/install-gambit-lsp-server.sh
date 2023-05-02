@@ -33,5 +33,4 @@ cd $scheme_lsp_dir/gambit
 rm -f $BASE_DIR/gambit-lsp-server
 
 sh ./compile.sh
-cp $scheme_lsp_dir/gambit/gambit-lsp-server $BASE_DIR
 cd $CUR_DIR
