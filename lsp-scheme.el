@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.2.2
+;; Version: 0.2.3
 ;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -176,35 +176,7 @@ The command requests from a running command server (started with
 (defun lsp-scheme--gambit-check-compiler ()
   "Check if compiler is recent enough to be used to compile the library."
   (let ((version (car (split-string (shell-command-to-string "gsi -v")))))
-    (not (string-version-lessp version "v4.9.4-89"))))
-
-(defun lsp-scheme--gambit-compile-library ()
-  "Compile installed LSP library for Gambit."
-  (cond ((lsp-scheme--gambit-check-compiler)
-         (lsp--info (format "Compiling library..."))
-         (let* ((userlib (shell-command-to-string
-                          "gsi -e '(display (path-expand \"~~userlib\"))'"))
-                (compile-script
-                 (locate-file
-                  "compile.sh"
-                  (list (f-join
-                         userlib
-                         "codeberg.org/rgherdt/scheme-lsp-server/@/gambit")))))
-           (call-process-shell-command compile-script
-                                       nil
-                                       lsp-scheme--shell-output-name
-                                       t)))
-        (t (lsp--info
-            (concat "Old compiler detected. Please build a newer version of "
-                    "GSC in order to compile the LSP library")))))
-
-(defun lsp-scheme--gambit-generate-executable ()
-  "Compile gambit-lsp-server."
-  (let ((source (locate-file (f-join "scripts" "gambit-lsp-server.scm") load-path)))
-    (call-process-shell-command (format "gsc -exe -nopreload %s" source)
-                                nil
-                                lsp-scheme--shell-output-name
-                                t)))
+    (not (string-version-lessp version "v4.9.3"))))
 
 (defun lsp-scheme--gambit-ensure-server
     (_client callback error-callback _update?)
@@ -214,27 +186,20 @@ and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
 ignored"
   (condition-case err
-      (let* ((install-script
+      (let* ((install-cmd
               (locate-file (f-join "scripts" "install-gambit-lsp-server.sh")
                            load-path))
-             (compile-p (lsp-scheme--gambit-check-compiler))
-             (install-cmd
-              (if compile-p
-                  (format "%s compile" install-script)
-                install-script))
              (lib-installed-p
               (lsp-scheme--gambit-library-installed-p))
              (executable-found-p
-              (lsp-scheme--gambit-executable-installed-p)))
-        (cond ((not lib-installed-p)
+              (lsp-scheme--gambit-find-lsp-server)))
+        (cond ((or (not lib-installed-p)
+                   (not executable-found-p))
                (lsp--info (format "Installing LSP server for Gambit"))
                (call-process-shell-command install-cmd
                                            nil
                                            lsp-scheme--shell-output-name
                                            t))
-              ((not executable-found-p)
-               (lsp--info (format "LSP Library found, but executable missing. Compiling it."))
-               (lsp-scheme--gambit-generate-executable))
               (t
                (lsp--info (format "LSP server already installed."))))
         (funcall callback))
@@ -246,9 +211,10 @@ ignored"
               "gsi -e '(import (codeberg.org/rgherdt/scheme-lsp-server lsp-server private gambit)) (exit)'")))
     (= res 0)))
 
-(defun lsp-scheme--gambit-executable-installed-p ()
-  "Check if compiled guile-lsp-server is available."
-  (locate-file (f-join "scripts" "gambit-lsp-server") load-path))
+(defun lsp-scheme--gambit-userlib-path ()
+  "Return path to userlib gambit directory."
+  (shell-command-to-string
+   "gsi -e '(display (path-expand \"~~userlib\"))'"))
 
 (defun lsp-scheme--gambit-server-installed-p ()
   "Check if LSP server for Gambit is installed."
@@ -256,13 +222,26 @@ ignored"
        (lsp-scheme--accepted-installed-server-p
         "gambit-lsp-server"
         lsp-scheme--gambit-server-minimum-version
-        "")))
+        ""
+        (f-join (lsp-scheme--gambit-userlib-path)
+                "codeberg.org"
+                "rgherdt"
+                "scheme-lsp-server"
+                "@"
+                "gambit"))))
 
 (defun lsp-scheme--gambit-find-lsp-server ()
   "Return path to gambit-lsp-server if found."
   (or (locate-file "gambit-lsp-server" load-path)
       (locate-file (f-join "scripts" "gambit-lsp-server") load-path)
-      (locate-file (f-join "bin" "gambit-lsp-server") load-path)))
+      (locate-file (f-join "bin" "gambit-lsp-server") load-path)
+      (locate-file "gambit-lsp-server"
+                   (list (f-join (lsp-scheme--gambit-userlib-path)
+                                 "codeberg.org"
+                                 "rgherdt"
+                                 "scheme-lsp-server"
+                                 "@"
+                                 "gambit")))))
 
 (defun lsp-scheme--gambit-start ()
   "Return list containing a command to run and its arguments based on PORT.
@@ -401,7 +380,7 @@ The caller may provide EXTRA-PATHS to search for."
     (if (not bin-path)
         nil
       (let ((res (shell-command-to-string
-                  (format "%s %s %s" env bin-path "--version"))))
+                  (format "%s %s %s 2>/dev/null" env bin-path "--version"))))
         (if (not res)
             nil
           (let ((installed-version (lsp-scheme--get-version-from-string res)))

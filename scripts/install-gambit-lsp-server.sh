@@ -2,17 +2,8 @@
 
 ARGS=$@
 
-BASE_DIR=$(dirname $0)
-
-force_flag=0
-compile_flag=0
-
-if [ "$#" -eq 1 ]; then
-    if test "$1" = "compile"; then
-        echo "COMPILE"
-        compile_flag=1
-    fi
-fi
+BASE_DIR=$(readlink -f $(dirname $0))
+CUR_DIR=`pwd`
 
 deps=("codeberg.org/rgherdt/srfi" \
           "github.com/ashinn/irregex" \
@@ -25,13 +16,22 @@ for dep in ${deps[@]}; do
     gsi -install $dep
 done
 
-if [ $compile_flag -eq 1 ]; then
-    gsc codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/gambit \
-        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/util \
-        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/parse \
-        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/adapter \
-        codeberg.org/rgherdt/scheme-lsp-server/lsp-server/private/trie \
-        codeberg.org/rgherdt/scheme-lsp-server/lsp-server
+gsc codeberg.org/rgherdt/scheme-json-rpc/json-rpc
+
+userlib_path=`gsi -e '(display (path-expand "~~userlib"))'`
+scheme_lsp_dir=${userlib_path}codeberg.org/rgherdt/scheme-lsp-server/@
+compile_script=${scheme_lsp_dir}/gambit/compile.sh
+
+if ! [ -f $compile_script ]; then
+    echo "Library not installed. Aborting."
+    exit 1
 fi
 
-gsc -exe -nopreload ${BASE_DIR}/gambit-lsp-server.scm
+echo "Compiling library."
+
+cd $scheme_lsp_dir/gambit
+rm -f $BASE_DIR/gambit-lsp-server
+
+sh ./compile.sh
+cp $scheme_lsp_dir/gambit/gambit-lsp-server $BASE_DIR
+cd $CUR_DIR
