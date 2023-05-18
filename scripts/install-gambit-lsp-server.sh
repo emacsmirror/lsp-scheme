@@ -16,8 +16,9 @@ gsi -install "github.com/rgherdt/chibi-scheme"
 gsi -install "codeberg.org/rgherdt/scheme-json-rpc/json-rpc"
 gsi -install "codeberg.org/rgherdt/scheme-lsp-server/lsp-server"
 
-echo "Compiling scheme-json-rpc."
-gsc codeberg.org/rgherdt/scheme-json-rpc/json-rpc
+# Current stable Gambit version (4.9.4) can't compile `guard` properly
+# echo "Compiling scheme-json-rpc."
+# gsc codeberg.org/rgherdt/scheme-json-rpc/json-rpc
 
 userlib_path=`gsi -e '(display (path-expand "~~userlib"))'`
 scheme_lsp_dir=${userlib_path}codeberg.org/rgherdt/scheme-lsp-server/@
