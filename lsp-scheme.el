@@ -72,7 +72,7 @@
 ;; `scheme-program-name` to run the interpreter of your Scheme of choice.
 
 ;; The LSP server works best if your code is packed inside a library definition
-;; (either R6RS, R7RS or implementation specific). Depending on the implementation,
+;; (either R6RS, R7RS or implementation specific).  Depending on the implementation,
 ;; you can improve the experience by adding your library to a path where your
 ;; implementation can find it (see note regarding Guile below).
 
@@ -219,10 +219,8 @@ ignored"
 (defun lsp-scheme--gambit-server-installed-p ()
   "Check if LSP server for Gambit is installed."
   (and (lsp-scheme--gambit-library-installed-p)
-       (lsp-scheme--accepted-installed-server-p
+       (lsp-scheme--installed-server-p
         "gambit-lsp-server"
-        lsp-scheme--gambit-server-minimum-version
-        ""
         (f-join (lsp-scheme--gambit-userlib-path)
                 "codeberg.org"
                 "rgherdt"
@@ -386,6 +384,18 @@ The caller may provide EXTRA-PATHS to search for."
           (let ((installed-version (lsp-scheme--get-version-from-string res)))
             (or (string-equal installed-version target-version)
                 (string-version-lessp target-version installed-version))))))))
+
+(defun lsp-scheme--installed-server-p (server-name &rest extra-paths)
+  "Check if LSP server SERVER-NAME is installed.
+Used for cases when lsp-scheme--accepted-installed-server-p is too slow and
+delays launching the server.  The caller may provide EXTRA-PATHS to search for."
+  (or (executable-find server-name)
+      (locate-file server-name load-path)
+      (locate-file (f-join "bin" server-name) load-path)
+      (locate-file (f-join "scripts" server-name) load-path)
+      (locate-file server-name extra-paths)
+      (locate-file (f-join "bin" server-name) extra-paths)
+      (locate-file (f-join "scripts" server-name) extra-paths)))
 
 (defun lsp-scheme--make-install (decompressed-path callback error-callback)
   "Install automake based project at DECOMPRESSED-PATH.
