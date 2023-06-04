@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.2.3
+;; Version: 0.2.4
 ;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
