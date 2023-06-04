@@ -254,7 +254,7 @@ The command requests from a running command server (started with
 
 ;;;###autoload
 (defun lsp-scheme-gambit ()
-  "Regist Guile's LSP server if needed."
+  "Register Guile's LSP server if needed."
   (lsp-scheme--initialize)
   (unless (gethash 'lsp-gambit-server lsp-clients)
     (lsp-scheme--gambit-register-client))
@@ -265,6 +265,22 @@ The command requests from a running command server (started with
 (defvar lsp-scheme--guile-install-dir
   (f-join lsp-server-install-dir "lsp-guile-server/"))
 
+(defvar lsp-scheme--guile-site-dir
+  (f-join lsp-scheme--guile-install-dir "share/guile/site/3.0/"))
+
+(defvar lsp-scheme--guile-lib-dir
+  (f-join lsp-scheme--guile-install-dir "lib/guile/3.0/site-ccache/"))
+
+
+(defun lsp-scheme--guile-find-lsp-server ()
+  "Return path to guile-lsp-server if found."
+  (or (locate-file "guile-lsp-server" load-path)
+      (locate-file (f-join "scripts" "guile-lsp-server") load-path)
+      (locate-file (f-join "bin" "guile-lsp-server") load-path)
+      (locate-file "guile-lsp-server"
+                   (list (f-join lsp-scheme--guile-install-dir
+                                 "bin")))))
+
 (defun lsp-scheme--guile-ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed and running.
 This function is meant to be used by lsp-mode's `lsp--install-server-internal`,
@@ -272,34 +288,30 @@ and thus calls its CALLBACK and ERROR-CALLBACK in case something wents wrong.
 If a server is already installed, reinstall it.  _CLIENT and _UPDATE? are
 ignored."
   (condition-case err
-      (let ((tmp-dir (make-temp-file "lsp-scheme-install" t)))
+      (let* ((tmp-dir (make-temp-file "lsp-scheme-install" t))
+             (dec-path (f-join tmp-dir
+                               "scheme-lsp-server"
+                               "guile")))
         (f-delete lsp-scheme--guile-install-dir t)
         (mkdir lsp-scheme--guile-install-dir t)
-
         (lsp-download-install
          (lambda ()
-           (lsp-scheme--make-install
-            (f-join tmp-dir
-                    "scheme-json-rpc"
-                    "guile")
-            (lambda ()
-              (lsp-download-install
-               (lambda ()
-                 (lsp-scheme--make-install
-                  (f-join tmp-dir
-                          "scheme-lsp-server"
-                          "guile")
-                  (funcall callback)
-                  error-callback))
-               error-callback
-               :url lsp-scheme-server-url
-               :decompress :zip
-               :store-path (f-join tmp-dir "scheme-lsp-server")))
-            error-callback))
+           (lsp--info "Installing LSP server dependencies.")
+           (call-process-shell-command (format "cd %s && ./install-deps.sh --prefix %s"
+                                               (f-join dec-path "scripts")
+                                               lsp-scheme--guile-install-dir)
+                                       nil
+                                       lsp-scheme--shell-output-name
+                                       t)
+
+           (lsp--info "Installing LSP server.")
+           (lsp-scheme--make-install dec-path
+                                     callback
+                                     error-callback))
          error-callback
-         :url lsp-scheme-json-rpc-url
+         :url lsp-scheme-server-url
          :decompress :zip
-         :store-path (f-join tmp-dir "scheme-json-rpc")))
+         :store-path (f-join tmp-dir "scheme-lsp-server")))
     (error (funcall error-callback err))))
 
 (defun lsp-scheme--guile-environment ()
@@ -308,13 +320,11 @@ Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
 consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   `(("GUILE_LOAD_COMPILED_PATH" .
      (list ,lsp-scheme--guile-install-dir
-            ,(f-join lsp-scheme--guile-install-dir
-                    "lib/guile/3.0/site-ccache/")
+            ,lsp-scheme--guile-lib-dir
             ,(or (getenv "GUILE_LOAD_COMPILED_PATH") "")))
     ("GUILE_LOAD_PATH" .
      (list ,lsp-scheme--guile-install-dir ":"
-           ,(f-join lsp-scheme--guile-install-dir
-                    "share/guile/site/3.0/")
+           ,lsp-scheme--guile-site-dir
            ,(or (getenv "GUILE_LOAD_PATH") "")))))
 
 (defun lsp-scheme--guile-server-installed-p ()
@@ -322,15 +332,12 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   (lsp-scheme--accepted-installed-server-p
    "guile-lsp-server"
    lsp-scheme--guile-server-minimum-version
-   (format "GUILE_LOAD_COMPILED_PATH=%s:%s:%s GUILE_LOAD_PATH=%s:%s:%s"
-           lsp-scheme--guile-install-dir
+   (format "GUILE_LOAD_COMPILED_PATH=%s:%s GUILE_LOAD_PATH=%s:%s"
            (f-join lsp-scheme--guile-install-dir
                    "lib/guile/3.0/site-ccache/")
            (getenv "GUILE_LOAD_COMPILED_PATH")
 
-           lsp-scheme--guile-install-dir
-           (f-join lsp-scheme--guile-install-dir
-                   "share/guile/site/3.0/")
+           lsp-scheme--guile-site-dir
            (getenv "GUILE_LOAD_PATH"))
    lsp-scheme--guile-install-dir))
 
@@ -339,11 +346,12 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
 The command requests from a running command server (started with
  `lsp-scheme--run') an LSP server for the current scheme buffer."
   (list (or (locate-file "guile-lsp-server" load-path)
-            (locate-file (f-join "bin" "guile-lsp-server") load-path))
+            (locate-file (f-join "bin" "guile-lsp-server") load-path)
+            (locate-file "guile-lsp-server"
+                         (list (f-join lsp-scheme--guile-install-dir
+                                       "bin"))))
         "--log-level"
-        lsp-scheme-log-level
-        "--listen"
-        (format "%d" lsp-scheme-repl-port)))
+        lsp-scheme-log-level))
 
 ;;;###autoload
 (defun lsp-scheme-guile ()
@@ -402,10 +410,8 @@ delays launching the server.  The caller may provide EXTRA-PATHS to search for."
 The caller shall provide a CALLBACK to execute after finishing installing
 the tarball, and an ERROR-CALLBACK to be called in case of an error."
   (let* ((env-string (format "GUILE_LOAD_PATH=.:...:%s:$GUILE_LOAD_PATH GUILE_LOAD_COMPILED_PATH=.:...:%s:$GUILE_COMPILE_LOAD_PATH"
-                             (f-join lsp-scheme--guile-install-dir
-                                     "share/guile/site/3.0/")
-                             (f-join lsp-scheme--guile-install-dir
-                                     "lib/guile/3.0/site-ccache/")))
+                             lsp-scheme--guile-site-dir
+                             lsp-scheme--guile-lib-dir))
          (cmd (format
                "cd %s && %s ./configure --prefix=%s && %s make && %s make install && cd -"
                decompressed-path
@@ -414,10 +420,9 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                env-string
                env-string)))
     (message cmd)
-    (lsp--info "Building software...")
     (let ((res (call-process-shell-command cmd
                                            nil
-                                           "*Shell Command output*"
+                                           lsp-scheme--shell-output-name
                                            t)))
       (if (= res 0)
           (funcall callback)
