@@ -320,10 +320,10 @@ Return an alist of ((ENV-VAR . VALUE)), where VALUE is appropriated to be
 consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   `(("GUILE_LOAD_COMPILED_PATH" .
      (list ,lsp-scheme--guile-install-dir
-            ,lsp-scheme--guile-lib-dir
-            ,(or (getenv "GUILE_LOAD_COMPILED_PATH") "")))
+           ,lsp-scheme--guile-lib-dir
+           ,(or (getenv "GUILE_LOAD_COMPILED_PATH") "")))
     ("GUILE_LOAD_PATH" .
-     (list ,lsp-scheme--guile-install-dir ":"
+     (list ,lsp-scheme--guile-install-dir
            ,lsp-scheme--guile-site-dir
            ,(or (getenv "GUILE_LOAD_PATH") "")))))
 
