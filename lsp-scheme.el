@@ -2,7 +2,7 @@
 
 ;; Author: Ricardo G. Herdt <r.herdt@posteo.de>
 ;; Keywords: languages, lisp, tools
-;; Version: 0.2.4
+;; Version: 0.2.5
 ;; Package-Requires: ((emacs "26.1") (f "0.20.0") (lsp-mode "8.0.0"))
 
 ;; Copyright (C) 2022 Ricardo Gabriel Herdt
@@ -159,7 +159,8 @@
   "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
  `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (list (or (locate-file "chicken-lsp-server" load-path)
+  (list (or (locate-file "chicken-lsp-server" (split-string (getenv "PATH") ":"))
+            (locate-file "chicken-lsp-server" load-path)
             (locate-file (f-join "bin" "chicken-lsp-server") load-path))
         "--log-level"
         lsp-scheme-log-level))
@@ -219,27 +220,18 @@ ignored"
 (defun lsp-scheme--gambit-server-installed-p ()
   "Check if LSP server for Gambit is installed."
   (and (lsp-scheme--gambit-library-installed-p)
-       (lsp-scheme--installed-server-p
-        "gambit-lsp-server"
-        (f-join (lsp-scheme--gambit-userlib-path)
-                "codeberg.org"
-                "rgherdt"
-                "scheme-lsp-server"
-                "@"
-                "gambit"))))
+       (lsp-scheme--gambit-find-lsp-server)))
 
 (defun lsp-scheme--gambit-find-lsp-server ()
   "Return path to gambit-lsp-server if found."
-  (or (locate-file "gambit-lsp-server" load-path)
-      (locate-file (f-join "scripts" "gambit-lsp-server") load-path)
-      (locate-file (f-join "bin" "gambit-lsp-server") load-path)
-      (locate-file "gambit-lsp-server"
-                   (list (f-join (lsp-scheme--gambit-userlib-path)
-                                 "codeberg.org"
-                                 "rgherdt"
-                                 "scheme-lsp-server"
-                                 "@"
-                                 "gambit")))))
+  (lsp-scheme--find-lsp-server
+   "gambit-lsp-server"
+   (f-join (lsp-scheme--gambit-userlib-path)
+           "codeberg.org"
+           "rgherdt"
+           "scheme-lsp-server"
+           "@"
+           "gambit")))
 
 (defun lsp-scheme--gambit-start ()
   "Return list containing a command to run and its arguments based on PORT.
@@ -274,12 +266,10 @@ The command requests from a running command server (started with
 
 (defun lsp-scheme--guile-find-lsp-server ()
   "Return path to guile-lsp-server if found."
-  (or (locate-file "guile-lsp-server" load-path)
-      (locate-file (f-join "scripts" "guile-lsp-server") load-path)
-      (locate-file (f-join "bin" "guile-lsp-server") load-path)
-      (locate-file "guile-lsp-server"
-                   (list (f-join lsp-scheme--guile-install-dir
-                                 "bin")))))
+  (lsp-scheme--find-lsp-server
+   "guile-lsp-server"
+   (f-join lsp-scheme--guile-install-dir
+           "bin")))
 
 (defun lsp-scheme--guile-ensure-server (_client callback error-callback _update?)
   "Ensure LSP Server for Guile is installed and running.
@@ -345,11 +335,7 @@ consumed by lsp-mode (see ENVIRONMENT-FN argument to LSP--CLIENT)."
   "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
  `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (list (or (locate-file "guile-lsp-server" load-path)
-            (locate-file (f-join "bin" "guile-lsp-server") load-path)
-            (locate-file "guile-lsp-server"
-                         (list (f-join lsp-scheme--guile-install-dir
-                                       "bin"))))
+  (list (lsp-scheme--guile-find-lsp-server)
         "--log-level"
         lsp-scheme-log-level))
 
@@ -376,13 +362,8 @@ Used to extract version from output of <>-lsp-server --version."
   "Check if LSP server SERVER-NAME with correct TARGET-VERSION are installed.
 ENV must be a string setting environment variables needed by the LSP server.
 The caller may provide EXTRA-PATHS to search for."
-  (let ((bin-path (or (executable-find server-name)
-                      (locate-file server-name load-path)
-                      (locate-file (f-join "bin" server-name) load-path)
-                      (locate-file (f-join "scripts" server-name) load-path)
-                      (locate-file server-name extra-paths)
-                      (locate-file (f-join "bin" server-name) extra-paths)
-                      (locate-file (f-join "scripts" server-name) extra-paths))))
+  (let ((bin-path (apply #'lsp-scheme--find-lsp-server
+                         (cons server-name extra-paths))))
     (if (not bin-path)
         nil
       (let ((res (shell-command-to-string
@@ -393,11 +374,12 @@ The caller may provide EXTRA-PATHS to search for."
             (or (string-equal installed-version target-version)
                 (string-version-lessp target-version installed-version))))))))
 
-(defun lsp-scheme--installed-server-p (server-name &rest extra-paths)
+(defun lsp-scheme--find-lsp-server (server-name &rest extra-paths)
   "Check if LSP server SERVER-NAME is installed.
 Used for cases when lsp-scheme--accepted-installed-server-p is too slow and
 delays launching the server.  The caller may provide EXTRA-PATHS to search for."
   (or (executable-find server-name)
+      (locate-file server-name (split-string (getenv "PATH") ":"))
       (locate-file server-name load-path)
       (locate-file (f-join "bin" server-name) load-path)
       (locate-file (f-join "scripts" server-name) load-path)
