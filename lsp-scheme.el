@@ -159,7 +159,8 @@
   "Return list containing a command to run and its arguments based on PORT.
 The command requests from a running command server (started with
  `lsp-scheme--run') an LSP server for the current scheme buffer."
-  (list (or (locate-file "chicken-lsp-server" (split-string (getenv "PATH") ":"))
+  (list (or (executable-find "chicken-lsp-server")
+            (locate-file "chicken-lsp-server" (split-string (getenv "PATH") ":"))
             (locate-file "chicken-lsp-server" load-path)
             (locate-file (f-join "bin" "chicken-lsp-server") load-path))
         "--log-level"
