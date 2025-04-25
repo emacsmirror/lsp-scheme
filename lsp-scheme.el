@@ -413,7 +413,7 @@ the tarball, and an ERROR-CALLBACK to be called in case of an error."
                  (format "Error building %s" decompressed-path))))))
 
 (defun lsp-scheme--initialize ()
-  "Initialize extension (setup 'load-path' and environment)."
+  "Initialize extension (setup `load-path` and environment)."
   (add-to-list 'load-path
                lsp-scheme--guile-install-dir))
 
